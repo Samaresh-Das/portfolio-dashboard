@@ -8,10 +8,15 @@ import {
 } from "firebase/auth";
 import { useState } from "react";
 import Button from "./ui/Button";
+import { useDispatch, useSelector } from "react-redux";
+import { logOut, signInSuccess } from "@/store/authSlice";
+import { RootState } from "@/store/store";
+import { useNavigate } from "react-router-dom";
 
 const SignIn = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [signedIn, setSignedIn] = useState(false);
+  const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const navigate = useNavigate();
   const provider = new GoogleAuthProvider();
 
   const auth = getAuth(app);
@@ -25,9 +30,15 @@ const SignIn = () => {
         // The signed-in user info.
         const userData = result.user;
         // IdP data available using getAdditionalUserInfo(result)
-        console.log(userData?.email);
-        setUser(userData);
-        setSignedIn(true);
+        // setSignedIn(true);
+        dispatch(
+          signInSuccess({
+            userId: userData.uid,
+            email: userData.email || "",
+            imageUrl: userData.photoURL || "",
+          })
+        );
+        navigate("/dashboard");
       })
       .catch((error: any) => {
         console.log(error);
@@ -37,21 +48,21 @@ const SignIn = () => {
   const signOutHandler = () => {
     signOut(auth)
       .then(() => {
-        setSignedIn(false);
+        dispatch(logOut());
+        navigate("/");
       })
       .catch((error: any) => {
         console.log(error);
       });
   };
 
-  console.log(user?.email);
   return (
     <div className="px-6 sm:px-0 max-w-sm mx-auto  ">
       <h1 className="text-[#FF8303] font-intro2 text-[30px] text-center mb-[32px] mt-10">
         This site is only for admins. This is not a showcase project. Only
         selected user is allowed.
       </h1>
-      {!signedIn && (
+      {!isAuthenticated && (
         <Button onClick={authHandler} type="button">
           <svg
             className="mr-2 -ml-1 w-4 h-4"
@@ -71,7 +82,7 @@ const SignIn = () => {
           Sign up with Google(Admin only)<div></div>
         </Button>
       )}
-      {signedIn && (
+      {isAuthenticated && (
         <Button className="text-center mx-auto" onClick={signOutHandler}>
           Sign Out
         </Button>
