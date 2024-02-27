@@ -3,6 +3,10 @@ import SignIn from "./components/Sign-In";
 import NotAllowed from "./components/NotAllowed";
 import PrivateRoute from "./components/PrivateRoute";
 import Dashboard from "./components/Dashboard";
+import Projects from "./components/Dashboard/Projects";
+import Experience from "./components/Dashboard/Experience";
+import Socials from "./components/Dashboard/Socials";
+import Skills from "./components/Dashboard/Skills";
 
 // const router = createBrowserRouter([
 //   {
@@ -30,6 +34,38 @@ function App() {
             element={
               <PrivateRoute>
                 <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/dashboard/projects"
+            element={
+              <PrivateRoute>
+                <Projects />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/dashboard/experience"
+            element={
+              <PrivateRoute>
+                <Experience />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/dashboard/socials"
+            element={
+              <PrivateRoute>
+                <Socials />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/dashboard/skills"
+            element={
+              <PrivateRoute>
+                <Skills />
               </PrivateRoute>
             }
           />
