@@ -11,7 +11,7 @@ import Button from "./ui/Button";
 import { useDispatch, useSelector } from "react-redux";
 import { logOut, signInSuccess } from "@/store/authSlice";
 import { RootState } from "@/store/store";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const SignIn = () => {
   const dispatch = useDispatch();
@@ -83,9 +83,17 @@ const SignIn = () => {
         </Button>
       )}
       {isAuthenticated && (
-        <Button className="text-center mx-auto" onClick={signOutHandler}>
-          Sign Out
-        </Button>
+        <div className="w-full">
+          <Link
+            className="w-full text-[#fb5607] hover:text-[#f0e3a4] border border-[#fb5607] hover:border-[#f0e3a4] rounded-lg my-4 px-7 py-3 text-center"
+            to="/dashboard"
+          >
+            Dashboard
+          </Link>
+          <Button className="text-center mx-auto my-9" onClick={signOutHandler}>
+            Sign Out
+          </Button>
+        </div>
       )}
     </div>
   );
