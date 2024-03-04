@@ -1,8 +1,14 @@
+import { RootState } from "@/store/store";
+import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
+  const email = useSelector((state: RootState) => state.auth.email); //getting email
   return (
     <div>
+      <h1 className="text-[#f0e3a4] text-center text-[20px] mb-6">
+        OWNER - {email}
+      </h1>
       <h1 className="text-[#fb5607] text-[30px] text-center mt-5 font-bold">
         <Link to="/">Home</Link>
       </h1>

@@ -46,7 +46,6 @@ const authSlice = createSlice({
           isAuthenticated: true,
         })
       );
-      console.log(state.email);
     },
     logOut: (state) => {
       state.userId = null;

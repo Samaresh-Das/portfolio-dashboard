@@ -14,7 +14,6 @@ const Reorganize = () => {
       const data = snapshot.val();
       setProjects(data);
       setLoading(false);
-      console.log(projects);
     });
   }, []);
 

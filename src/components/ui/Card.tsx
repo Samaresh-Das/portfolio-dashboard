@@ -1,3 +1,5 @@
+import { truncateDescription } from "@/functions/truncate";
+
 interface Project {
   title: string;
   description: string;
@@ -8,27 +10,23 @@ interface Project {
 const Card = ({ project }: { project: Project }) => {
   const { title, description, image } = project;
 
-  console.log(image);
+  const desc = truncateDescription(description, 60);
+
   return (
-    <div>
-      <a
-        href="#"
-        className="flex flex-col items-center bg-white border border-gray-200 rounded-lg shadow md:flex-row md:max-w-xl hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
-      >
+    <div className="my-3 ">
+      <div className="flex flex-col items-center rounded-lg shadow md:flex-row md:max-w-xl border border-[#fb5607]">
         <img
           className="object-cover w-full rounded-t-lg h-96 md:h-auto md:w-48 md:rounded-none md:rounded-s-lg"
           src={image}
           alt=""
         />
-        <div className="flex flex-col justify-between p-4 leading-normal">
-          <h5 className="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+        <div className="flex flex-col justify-between leading-normal px-4">
+          <h5 className="mb-2 text-2xl font-bold tracking-tight text-[#fb5607]">
             {title}
           </h5>
-          <p className="mb-3 font-normal text-gray-700 dark:text-gray-400">
-            {description}
-          </p>
+          <p className="mb-3 font-normal text-[#f0e3a4]">{desc}</p>
         </div>
-      </a>
+      </div>
     </div>
   );
 };

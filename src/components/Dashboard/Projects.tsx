@@ -5,6 +5,8 @@ import Button from "../ui/Button";
 import { app } from "@/firebase";
 import { useEffect, useState } from "react";
 import Reorganize from "../ui/Reorganize";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
 
 type Inputs = {
   title: string;
@@ -17,38 +19,48 @@ type Inputs = {
 
 const Projects = () => {
   const db = getDatabase(app);
+
+  const userId = useSelector((state: RootState) => state.auth.userId); //getting userID
+
   const [projectsLength, setProjectsLength] = useState(0);
 
   useEffect(() => {
-    const starCountRef = ref(db, "projects/metadata");
-    onValue(starCountRef, (snapshot) => {
+    //getting metadata
+    const metaRef = ref(db, "projects/metadata");
+    onValue(metaRef, (snapshot) => {
       const data = snapshot.val();
-      console.log(data);
       setProjectsLength(data.maxLength);
     });
   }, []);
 
-  const handleSubmission = (data: Inputs) => {
-    if (errors) return;
+  const handleSubmission = async (data: Inputs) => {
+    try {
+      //if the user is not matching the owner, then cancel
+      if (userId !== import.meta.env.VITE_APP_OWNER_ID) {
+        throw new Error("Not Authorized, You need administrator access");
+      }
 
-    const { title, description, live, code } = data;
-    const db = getDatabase();
+      const { title, description, live, code, image } = data;
+      const postData = {
+        title,
+        description,
+        image,
+        live,
+        code,
+      };
 
-    const postData = {
-      title,
-      description,
-      live,
-      code,
-    };
+      const newPostKey = projectsLength + 1; //increase the count as we're going to update the metadata
 
-    const newPostKey = projectsLength + 1;
-    console.log(newPostKey);
-    const updates: Partial<Record<string, any>> = {};
+      const updates: Partial<Record<string, any>> = {};
 
-    updates[`/projects/${newPostKey}`] = postData;
-    updates["/projects/metadata/maxLength"] = newPostKey;
+      updates[`/projects/${newPostKey}`] = postData;
+      updates["/projects/metadata/maxLength"] = newPostKey; //update metadata
 
-    return update(ref(db), updates);
+      await update(ref(db), updates);
+    } catch (error) {
+      console.error(error);
+      // Handle the error as needed
+    }
   };
 
   const {
