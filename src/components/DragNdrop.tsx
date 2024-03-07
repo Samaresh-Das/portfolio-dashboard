@@ -21,6 +21,11 @@ export interface Exp {
   timeLine: string;
 }
 
+export interface Skills {
+  logo: string;
+  text: string;
+}
+
 interface Url {
   url: string;
 }
@@ -46,6 +51,11 @@ const DragNdrop = ({ url }: Url) => {
       const { metadata, ...experience } = data;
       setMetadata(metadata); //set metdata
       items = experience;
+      setItemsArray(Object.values(items));
+    } else if (url === "/skills") {
+      const { metadata, ...skills } = data;
+      setMetadata(metadata); //set metdata
+      items = skills;
       setItemsArray(Object.values(items));
     }
   }, [data]);
@@ -74,6 +84,8 @@ const DragNdrop = ({ url }: Url) => {
       dbRef = ref(db, "projects");
     } else if (url === "/experience") {
       dbRef = ref(db, "experience");
+    } else if (url === "/skills") {
+      dbRef = ref(db, "skills");
     } else {
       throw new Error(`Invalid URL: ${url}`);
     }

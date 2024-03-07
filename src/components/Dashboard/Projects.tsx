@@ -13,7 +13,7 @@ type Inputs = {
   title: string;
   // id: number;
   description: string;
-  image: "string";
+  image: string;
   live: string;
   code: string;
 };

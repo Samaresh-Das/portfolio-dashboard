@@ -1,5 +1,5 @@
 import { truncateDescription } from "@/functions/truncate";
-import { Exp } from "../DragNdrop";
+import { Exp, Skills } from "../DragNdrop";
 
 interface Project {
   title: string;
@@ -7,7 +7,7 @@ interface Project {
   image: string;
 }
 
-const Card = ({ item, url }: { item: Project | Exp; url: string }) => {
+const Card = ({ item, url }: { item: Project | Exp | Skills; url: string }) => {
   if (url === "/projects") {
     const { title, description, image } = item as Project;
     const desc = truncateDescription(description, 60);
@@ -51,6 +51,25 @@ const Card = ({ item, url }: { item: Project | Exp; url: string }) => {
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+      </div>
+    );
+  } else if (url === "/skills") {
+    const { text, logo } = item as Skills;
+
+    return (
+      <div className="my-3 hover:cursor-grab">
+        <div className="flex flex-col items-center rounded-lg shadow md:flex-row md:max-w-xl border border-[#fb5607]">
+          <img
+            className="object-contain w-full rounded-t-lg h-96 md:h-[90px] md:w-48 md:rounded-none md:rounded-s-lg"
+            src={logo}
+            alt=""
+          />
+          <div className="flex flex-col justify-between leading-normal px-4">
+            <h5 className="mb-2 text-2xl font-bold tracking-tight text-[#fb5607]">
+              {text}
+            </h5>
           </div>
         </div>
       </div>
