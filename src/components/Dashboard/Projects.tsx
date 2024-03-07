@@ -4,9 +4,10 @@ import { getDatabase, ref, onValue, update } from "firebase/database";
 import Button from "../ui/Button";
 import { app } from "@/firebase";
 import { useEffect, useState } from "react";
-import Reorganize from "../ui/Reorganize";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
+import DragNdrop from "../DragNdrop";
+import { GdriveUrlConverter } from "@/functions/GdriveUrlConverter";
 
 type Inputs = {
   title: string;
@@ -41,10 +42,12 @@ const Projects = () => {
       }
 
       const { title, description, live, code, image } = data;
+      const gdriveImageUrl = GdriveUrlConverter(image);
+
       const postData = {
         title,
         description,
-        image,
+        image: gdriveImageUrl,
         live,
         code,
       };
@@ -59,7 +62,6 @@ const Projects = () => {
       await update(ref(db), updates);
     } catch (error) {
       console.error(error);
-      // Handle the error as needed
     }
   };
 
@@ -158,7 +160,7 @@ const Projects = () => {
           </Button>
         </form>
       </div>
-      <Reorganize />
+      <DragNdrop url="/projects" />
     </div>
   );
 };
