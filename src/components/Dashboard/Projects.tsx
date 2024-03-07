@@ -42,12 +42,12 @@ const Projects = () => {
       }
 
       const { title, description, live, code, image } = data;
-      const gdriveImageUrl = GdriveUrlConverter(image);
 
+      //we're using aws here, just s3 link.
       const postData = {
         title,
         description,
-        image: gdriveImageUrl,
+        image: image,
         live,
         code,
       };

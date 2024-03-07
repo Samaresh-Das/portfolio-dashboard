@@ -33,12 +33,7 @@ const Dashboard = () => {
           >
             Experience
           </Link>
-          <Link
-            to="/dashboard/socials"
-            className="text-[#fb5607] hover:text-[#f0e3a4] border border-[#fb5607] hover:border-[#f0e3a4] font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 "
-          >
-            Socials
-          </Link>
+
           <Link
             to="/dashboard/skills"
             className="text-[#fb5607] hover:text-[#f0e3a4] border border-[#fb5607] hover:border-[#f0e3a4] font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 "
