@@ -5,7 +5,6 @@ import PrivateRoute from "./components/PrivateRoute";
 import Dashboard from "./components/Dashboard";
 import Projects from "./components/Dashboard/Projects";
 import Experience from "./components/Dashboard/Experience";
-import Socials from "./components/Dashboard/Socials";
 import Skills from "./components/Dashboard/Skills";
 
 // const router = createBrowserRouter([
