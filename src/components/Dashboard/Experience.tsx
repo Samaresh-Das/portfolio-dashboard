@@ -25,7 +25,7 @@ const Experience = () => {
 
   const [experienceLength, setExperienceLength] = useState(0);
 
-  const { data, loading, error } = useData("experience/metadata");
+  const { data, loading } = useData("experience/metadata");
 
   useEffect(() => {
     if (!loading && data) {
