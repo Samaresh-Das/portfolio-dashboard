@@ -40,6 +40,7 @@ const Experience = () => {
   } = useForm<Inputs>();
 
   const handleSubmission = async (data: Inputs) => {
+    console.log(data);
     try {
       if (userId !== import.meta.env.VITE_APP_OWNER_ID) {
         throw new Error("Not Authorized, You need administrator access");
@@ -55,7 +56,7 @@ const Experience = () => {
         companyName: data.companyName,
         responsibility: responsibilities,
         timeLine: data.timeline,
-        certificate: data.certificate,
+        certificate: data.certificate || null,
       };
       console.log(newExperience);
 
@@ -79,13 +80,11 @@ const Experience = () => {
         <form
           className="w-full max-w-lg mx-auto mt-20"
           onSubmit={handleSubmit((data) => {
+            console.log(data);
             handleSubmission(data);
           })}
         >
-          {errors.jobTitle ||
-          errors.timeline ||
-          errors.certificate ||
-          errors.companyName ? (
+          {errors.jobTitle || errors.timeline || errors.companyName ? (
             <p className="text-red-500 text-xs italic">
               All fields are necessary
             </p>
@@ -114,7 +113,7 @@ const Experience = () => {
               >
                 Responsibility 1
               </label>
-              <input
+              <textarea
                 className="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 {...register("responsibility1", { required: true })}
               />
@@ -128,7 +127,7 @@ const Experience = () => {
               >
                 Responsibility 2
               </label>
-              <input
+              <textarea
                 className="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 {...register("responsibility2", { required: true })}
               />
@@ -142,7 +141,7 @@ const Experience = () => {
               >
                 Responsibility 3
               </label>
-              <input
+              <textarea
                 className="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 {...register("responsibility3", { required: true })}
               />
@@ -183,7 +182,7 @@ const Experience = () => {
               </label>
               <input
                 className="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
-                {...register("certificate", { required: true })}
+                {...register("certificate")}
               />
             </div>
           </div>
