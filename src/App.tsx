@@ -6,26 +6,15 @@ import Dashboard from "./components/Dashboard";
 import Projects from "./components/Dashboard/Projects";
 import Experience from "./components/Dashboard/Experience";
 import Skills from "./components/Dashboard/Skills";
-
-// const router = createBrowserRouter([
-//   {
-//     path: "/",
-//     element: <SignIn />,
-//   },
-//   {
-//     path: "/dashboard",
-//     element: <PrivateRoute element={<Dashboard />} path="/dashboard" />,
-//   },
-//   {
-//     path: "/not-authorized",
-//     element: <NotAllowed />,
-//   },
-// ]);
+import Navbar from "./components/ui/Navbar";
+import GradientBackground from "./components/ui/GradientBackground";
 
 function App() {
   return (
-    <div>
+    <div style={{ minHeight: "100vh", backgroundColor: "#0d0c0a" }}>
       <Router>
+        <GradientBackground />
+        <Navbar />
         <Routes>
           <Route path="/" element={<SignIn />} />
           <Route
