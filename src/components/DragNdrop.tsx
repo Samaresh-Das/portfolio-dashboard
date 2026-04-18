@@ -3,6 +3,7 @@ import Card from "./ui/Card";
 import { getDatabase, ref, set } from "firebase/database";
 import { app } from "@/firebase";
 import useData from "@/hooks/useData";
+import { AnimatePresence, motion } from "framer-motion";
 
 //structure of individual items
 interface Project {
@@ -95,22 +96,70 @@ const DragNdrop = ({ url }: Url) => {
   }
 
   return (
-    <div className="mt-20">
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        itemsArray.map((item, index) => (
-          <div
-            key={index}
-            draggable
-            onDragStart={() => (dragItem.current = index)}
-            onDragEnter={() => (draggedOverItem.current = index)}
-            onDragEnd={handleSort}
-            onDragOver={(e) => e.preventDefault()}
+    <div className="w-full">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="font-orbitron text-[10px] tracking-widest" style={{ color: "rgba(251,86,7,0.6)" }}>
+          LIVE DATA
+        </span>
+        <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, rgba(251,86,7,0.3), transparent)" }} />
+        {!loading && (
+          <span
+            className="font-orbitron text-[9px] tracking-widest px-2 py-1 rounded"
+            style={{
+              background: "rgba(34,197,94,0.08)",
+              color: "rgba(34,197,94,0.7)",
+              border: "1px solid rgba(34,197,94,0.15)",
+            }}
           >
-            <Card item={item} url={url} />
+            {itemsArray.length} ITEMS
+          </span>
+        )}
+      </div>
+
+      {/* Hint */}
+      <div
+        className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg"
+        style={{
+          background: "rgba(251,86,7,0.05)",
+          border: "1px solid rgba(251,86,7,0.1)",
+        }}
+      >
+        <span style={{ color: "rgba(251,86,7,0.5)", fontSize: 14 }}>⇅</span>
+        <p className="font-grotesk text-xs" style={{ color: "rgba(240,227,164,0.4)" }}>
+          Drag items to reorder — changes sync automatically to Firebase
+        </p>
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-16">
+          <div className="loader-dot" />
+          <div className="loader-dot" />
+          <div className="loader-dot" />
+        </div>
+      ) : (
+        <AnimatePresence>
+          <div className="space-y-2">
+            {itemsArray.map((item, index) => (
+              <motion.div
+                key={index}
+                layout
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ delay: index * 0.05, duration: 0.3 }}
+                draggable
+                onDragStart={() => (dragItem.current = index)}
+                onDragEnter={() => (draggedOverItem.current = index)}
+                onDragEnd={handleSort}
+                onDragOver={(e) => e.preventDefault()}
+              >
+                <Card item={item} url={url} />
+              </motion.div>
+            ))}
           </div>
-        ))
+        </AnimatePresence>
       )}
     </div>
   );

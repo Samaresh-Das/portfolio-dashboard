@@ -1,31 +1,37 @@
 import { useForm } from "react-hook-form";
 import { getDatabase, ref, onValue, update } from "firebase/database";
-
-import Button from "../ui/Button";
 import { app } from "@/firebase";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import DragNdrop from "../DragNdrop";
+import Button from "../ui/Button";
+import PageLayout from "../ui/PageLayout";
+import { motion } from "framer-motion";
 
 type Inputs = {
   title: string;
-  // id: number;
   description: string;
   image: string;
   live: string;
   code: string;
 };
 
+const fieldConfig = [
+  { name: "title" as const, label: "Project Title", type: "input", required: true, placeholder: "e.g. Portfolio Website" },
+  { name: "description" as const, label: "Description", type: "textarea", required: true, placeholder: "Brief description of the project..." },
+  { name: "image" as const, label: "Image URL", type: "input", required: true, placeholder: "https://..." },
+  { name: "live" as const, label: "Live URL", type: "input", required: true, placeholder: "https://..." },
+  { name: "code" as const, label: "Code / GitHub URL", type: "input", required: true, placeholder: "https://github.com/..." },
+];
+
 const Projects = () => {
   const db = getDatabase(app);
-
-  const userId = useSelector((state: RootState) => state.auth.userId); //getting userID
-
+  const userId = useSelector((state: RootState) => state.auth.userId);
   const [projectsLength, setProjectsLength] = useState(0);
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
 
   useEffect(() => {
-    //getting metadata
     const metaRef = ref(db, "projects/metadata");
     onValue(metaRef, (snapshot) => {
       const data = snapshot.val();
@@ -35,32 +41,23 @@ const Projects = () => {
 
   const handleSubmission = async (data: Inputs) => {
     try {
-      //if the user is not matching the owner, then cancel
       if (userId !== import.meta.env.VITE_APP_OWNER_ID) {
         throw new Error("Not Authorized, You need administrator access");
       }
 
       const { title, description, live, code, image } = data;
-
-      //we're using aws here, just s3 link.
-      const postData = {
-        title,
-        description,
-        image: image,
-        live,
-        code,
-      };
-
-      const newPostKey = projectsLength + 1; //increase the count as we're going to update the metadata
-
+      const postData = { title, description, image, live, code };
+      const newPostKey = projectsLength + 1;
       const updates: Partial<Record<string, any>> = {};
-
       updates[`/projects/${newPostKey}`] = postData;
-      updates["/projects/metadata/maxLength"] = newPostKey; //update metadata
-
+      updates["/projects/metadata/maxLength"] = newPostKey;
       await update(ref(db), updates);
+      setSubmitStatus("success");
+      setTimeout(() => setSubmitStatus("idle"), 3000);
     } catch (error) {
       console.error(error);
+      setSubmitStatus("error");
+      setTimeout(() => setSubmitStatus("idle"), 3000);
     }
   };
 
@@ -69,98 +66,130 @@ const Projects = () => {
     handleSubmit,
     formState: { errors },
   } = useForm<Inputs>();
+
   return (
-    <div className="grid grid-cols-2">
-      <div>
-        <form
-          className="w-full max-w-lg mx-auto mt-20"
-          onSubmit={handleSubmit((data) => {
-            handleSubmission(data);
-          })}
+    <PageLayout title="Projects" icon="◈" tag="CONTENT">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {/* ── Form Panel ── */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
         >
-          {errors.title || errors.description || errors.code || errors.live ? (
-            <p className="text-red-500 text-xs italic">
-              All fields are necessary
-            </p>
-          ) : null}
-
-          <div className=" -mx-3 mb-6 text-[#f0e3a4]">
-            <div className="w-full px-3 mb-6 md:mb-0 ">
-              <label
-                className="block uppercase tracking-wide font-bold mb-2"
-                htmlFor="grid-first-name"
+          <div className="clay-card p-6">
+            {/* Panel header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                style={{
+                  background: "linear-gradient(135deg, rgba(251,86,7,0.2), rgba(255,159,28,0.1))",
+                  border: "1px solid rgba(251,86,7,0.3)",
+                }}
               >
-                Project Title
-              </label>
-              <input
-                className="appearance-none block w-full bg-gray-200 text-gray-700 border border-red-500 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white"
-                id="grid-first-name"
-                {...register("title", { required: true })}
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap -mx-3 mb-6 text-[#f0e3a4]">
-            <div className="w-full px-3">
-              <label
-                className="block uppercase tracking-wide font-bold mb-2"
-                htmlFor="grid-password"
-              >
-                Project Description
-              </label>
-              <textarea
-                rows={12}
-                className="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
-                {...register("description", { required: true })}
-              />
-            </div>
-          </div>
-          <div className="flex flex-col flex-wrap -mx-3 mb-2 text-[#f0e3a4]">
-            <div className="w-full  px-3 mb-6 md:mb-0">
-              <label
-                className="block uppercase tracking-wide font-bold mb-2"
-                htmlFor="grid-city"
-              >
-                Image Link
-              </label>
-              <input
-                className="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
-                {...register("image", { required: true })}
-              />
-            </div>
-            <div className="w-full  px-3 mb-6 md:mb-0">
-              <label
-                className="block uppercase tracking-wide font-bold mb-2"
-                htmlFor="grid-city"
-              >
-                Live
-              </label>
-              <input
-                className="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
-                {...register("live", { required: true })}
-              />
+                +
+              </div>
+              <div>
+                <h2 className="font-orbitron font-bold text-sm text-gradient">ADD NEW PROJECT</h2>
+                <p className="font-grotesk text-xs" style={{ color: "rgba(240,227,164,0.4)" }}>
+                  Fill all fields and submit
+                </p>
+              </div>
             </div>
 
-            <div className="w-full  px-3 mb-6 md:mb-0">
-              <label
-                className="block uppercase tracking-wide font-bold mb-2"
-                htmlFor="grid-zip"
+            {/* Status banner */}
+            {submitStatus !== "idle" && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 px-4 py-3 rounded-xl font-grotesk text-sm"
+                style={{
+                  background: submitStatus === "success" ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
+                  border: `1px solid ${submitStatus === "success" ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
+                  color: submitStatus === "success" ? "#22c55e" : "#ef4444",
+                }}
               >
-                Code
-              </label>
-              <input
-                className="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
-                {...register("code", { required: true })}
-              />
+                {submitStatus === "success" ? "✓ Project added successfully!" : "✗ All fields are required."}
+              </motion.div>
+            )}
+
+            <form
+              onSubmit={handleSubmit((data) => {
+                if (errors.title || errors.description || errors.code || errors.live) {
+                  setSubmitStatus("error");
+                  return;
+                }
+                handleSubmission(data);
+              })}
+              className="space-y-4"
+            >
+              {fieldConfig.map((field) => (
+                <div key={field.name}>
+                  <label className="clay-label">{field.label}</label>
+                  {field.type === "textarea" ? (
+                    <textarea
+                      rows={4}
+                      placeholder={field.placeholder}
+                      className="clay-input resize-none"
+                      {...register(field.name, { required: field.required })}
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder={field.placeholder}
+                      className="clay-input"
+                      {...register(field.name, { required: field.required })}
+                    />
+                  )}
+                  {errors[field.name] && (
+                    <p className="mt-1 font-grotesk text-xs" style={{ color: "#ef4444" }}>
+                      This field is required
+                    </p>
+                  )}
+                </div>
+              ))}
+
+              <div className="pt-2">
+                <Button type="submit" className="w-full">
+                  <span className="font-orbitron text-xs tracking-wider">PUSH TO DATABASE</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </motion.div>
+
+        {/* ── Drag & Drop Panel ── */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <div className="clay-card p-6">
+            {/* Panel header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                style={{
+                  background: "linear-gradient(135deg, rgba(251,86,7,0.2), rgba(255,159,28,0.1))",
+                  border: "1px solid rgba(251,86,7,0.3)",
+                }}
+              >
+                ⇅
+              </div>
+              <div>
+                <h2 className="font-orbitron font-bold text-sm text-gradient">REORDER PROJECTS</h2>
+                <p className="font-grotesk text-xs" style={{ color: "rgba(240,227,164,0.4)" }}>
+                  Drag cards to change display order
+                </p>
+              </div>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto pr-1">
+              <DragNdrop url="/projects" />
             </div>
           </div>
-
-          <Button type="submit" className="w-[100px] my-5 text-center">
-            Submit
-          </Button>
-        </form>
+        </motion.div>
       </div>
-      <DragNdrop url="/projects" />
-    </div>
+    </PageLayout>
   );
 };
 
