@@ -4,7 +4,7 @@ import { RootState } from "@/store/store";
 import { getAuth, signOut } from "firebase/auth";
 import { logOut } from "@/store/authSlice";
 import { app } from "@/firebase";
-import { motion } from "framer-motion";
+
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 

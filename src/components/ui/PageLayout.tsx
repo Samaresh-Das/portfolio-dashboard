@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
 interface PageLayoutProps {
@@ -10,8 +10,6 @@ interface PageLayoutProps {
 }
 
 const PageLayout = ({ title, icon, tag, children }: PageLayoutProps) => {
-  const location = useLocation();
-
   return (
     <div className="page-container">
       <div className="content-wrapper py-8">
