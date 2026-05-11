@@ -45,6 +45,10 @@ const ManageSkills = () => {
   const [editLogo, setEditLogo] = useState("");
   const [actionStatus, setActionStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  
+  // Confirmation state
+  const [itemToDelete, setItemToDelete] = useState<SkillItem | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   /**
    * 4. DATA PARSING
@@ -98,20 +102,30 @@ const ManageSkills = () => {
   };
 
   /**
+   * TRIGGER DELETE CONFIRMATION
+   */
+  const confirmDelete = (item: SkillItem) => {
+    setItemToDelete(item);
+    setIsConfirmOpen(true);
+  };
+
+  /**
    * HANDLE DELETE & RE-INDEX LOGIC (CRITICAL)
    * Firebase Realtime DB uses keys (1, 2, 3...). If we delete "2", we need to shift 
    * "3" to "2" to maintain a continuous array structure for the portfolio website.
    */
-  const handleDelete = async (item: SkillItem) => {
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
     try {
       if (userId !== import.meta.env.VITE_APP_OWNER_ID) {
         throw new Error("Not Authorized");
       }
 
-      setDeletingId(item.id);
+      setDeletingId(itemToDelete.id);
+      setIsConfirmOpen(false); // Close confirmation immediately
 
       // 1. Remove the target entry
-      await remove(ref(db, `/skills/${item.id}`));
+      await remove(ref(db, `/skills/${itemToDelete.id}`));
 
       // 2. Fetch current state to rebuild the array
       const snapshot = await get(ref(db, "/skills"));
@@ -138,10 +152,12 @@ const ManageSkills = () => {
       await set(ref(db, "/skills"), rebuilt);
 
       setDeletingId(null);
+      setItemToDelete(null);
       showStatus("success", "Skill deleted successfully!");
     } catch (error) {
       console.error(error);
       setDeletingId(null);
+      setItemToDelete(null);
       showStatus("error", "Failed to delete skill.");
     }
   };
@@ -252,7 +268,7 @@ const ManageSkills = () => {
                     <motion.button
                       whileHover={{ scale: 1.08 }}
                       whileTap={{ scale: 0.92 }}
-                      onClick={() => handleDelete(item)}
+                      onClick={() => confirmDelete(item)}
                       disabled={deletingId === item.id}
                       className="manage-btn manage-btn-delete"
                       title="Delete"
@@ -310,6 +326,51 @@ const ManageSkills = () => {
             >
               <span className="font-orbitron text-xs tracking-wider">SAVE CHANGES</span>
             </Button>
+          </div>
+        </div>
+      </Modal>
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} title="CONFIRM DELETION">
+        <div className="space-y-6 text-center py-2">
+          <div className="flex flex-col items-center gap-4">
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center text-2xl"
+              style={{
+                background: "rgba(239,68,68,0.1)",
+                border: "1px solid rgba(239,68,68,0.3)",
+                color: "#ef4444"
+              }}
+            >
+              ⚠
+            </div>
+            <div>
+              <h3 className="font-orbitron font-bold text-sm text-gradient-error mb-2 uppercase tracking-wider">Are you absolutely sure?</h3>
+              <p className="font-grotesk text-xs leading-relaxed" style={{ color: "rgba(240,227,164,0.6)" }}>
+                You are about to delete <span style={{ color: "#fb5607", fontWeight: 600 }}>"{itemToDelete?.text}"</span>. 
+                This action cannot be undone and will permanently remove this item from your portfolio.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setIsConfirmOpen(false)}
+              className="flex-1 btn-clay btn-ghost flex items-center justify-center"
+            >
+              <span className="font-orbitron text-xs tracking-wider">GO BACK</span>
+            </button>
+            <button
+              onClick={handleDelete}
+              className="flex-1 rounded-xl flex items-center justify-center transition-all duration-200"
+              style={{
+                background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "white",
+                boxShadow: "0 4px 20px rgba(239,68,68,0.4)"
+              }}
+            >
+              <span className="font-orbitron text-xs tracking-wider">CONFIRM DELETE</span>
+            </button>
           </div>
         </div>
       </Modal>

@@ -37,6 +37,10 @@ const ManageExperience = () => {
   const [actionStatus, setActionStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
+  // Confirmation state
+  const [itemToDelete, setItemToDelete] = useState<{ key: string; name: string } | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
   // Parse items from data
   const itemEntries: [string, ExperienceItem][] = data
     ? Object.entries(data)
@@ -98,19 +102,29 @@ const ManageExperience = () => {
   };
 
   /**
+   * TRIGGER DELETE CONFIRMATION
+   */
+  const confirmDelete = (key: string, name: string) => {
+    setItemToDelete({ key, name });
+    setIsConfirmOpen(true);
+  };
+
+  /**
    * HANDLE DELETE & RE-INDEX LOGIC
    * Same pattern as Skills: delete the item, fetch remaining, re-assign numeric keys (1, 2, 3...), 
    * and overwrite the node to maintain a clean sequence for the frontend.
    */
-  const handleDelete = async (key: string) => {
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
     try {
       if (userId !== import.meta.env.VITE_APP_OWNER_ID) {
         throw new Error("Not Authorized");
       }
 
-      setDeletingKey(key);
+      setDeletingKey(itemToDelete.key);
+      setIsConfirmOpen(false);
 
-      await remove(ref(db, `/experience/${key}`));
+      await remove(ref(db, `/experience/${itemToDelete.key}`));
 
       // Re-index remaining items to prevent "holes" in the database sequence
       const snapshot = await get(ref(db, "/experience"));
@@ -134,10 +148,12 @@ const ManageExperience = () => {
       await set(ref(db, "/experience"), rebuilt);
 
       setDeletingKey(null);
+      setItemToDelete(null);
       showStatus("success", "Experience entry deleted!");
     } catch (error) {
       console.error(error);
       setDeletingKey(null);
+      setItemToDelete(null);
       showStatus("error", "Failed to delete experience.");
     }
   };
@@ -254,7 +270,7 @@ const ManageExperience = () => {
                       <motion.button
                         whileHover={{ scale: 1.08 }}
                         whileTap={{ scale: 0.92 }}
-                        onClick={() => handleDelete(key)}
+                        onClick={() => confirmDelete(key, item.companyName)}
                         disabled={deletingKey === key}
                         className="manage-btn manage-btn-delete"
                         title="Delete"
@@ -378,6 +394,51 @@ const ManageExperience = () => {
             >
               <span className="font-orbitron text-xs tracking-wider">SAVE CHANGES</span>
             </Button>
+          </div>
+        </div>
+      </Modal>
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} title="CONFIRM DELETION">
+        <div className="space-y-6 text-center py-2">
+          <div className="flex flex-col items-center gap-4">
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center text-2xl"
+              style={{
+                background: "rgba(239,68,68,0.1)",
+                border: "1px solid rgba(239,68,68,0.3)",
+                color: "#ef4444"
+              }}
+            >
+              ⚠
+            </div>
+            <div>
+              <h3 className="font-orbitron font-bold text-sm text-gradient-error mb-2 uppercase tracking-wider">Remove experience?</h3>
+              <p className="font-grotesk text-xs leading-relaxed" style={{ color: "rgba(240,227,164,0.6)" }}>
+                You are about to delete the entry for <span style={{ color: "#fb5607", fontWeight: 600 }}>"{itemToDelete?.name}"</span>. 
+                This will permanently remove it from your professional timeline.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setIsConfirmOpen(false)}
+              className="flex-1 btn-clay btn-ghost flex items-center justify-center"
+            >
+              <span className="font-orbitron text-xs tracking-wider">CANCEL</span>
+            </button>
+            <button
+              onClick={handleDelete}
+              className="flex-1 rounded-xl flex items-center justify-center transition-all duration-200"
+              style={{
+                background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "white",
+                boxShadow: "0 4px 20px rgba(239,68,68,0.4)"
+              }}
+            >
+              <span className="font-orbitron text-xs tracking-wider">CONFIRM DELETE</span>
+            </button>
           </div>
         </div>
       </Modal>
