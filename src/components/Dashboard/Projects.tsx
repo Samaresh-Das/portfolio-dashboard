@@ -7,6 +7,7 @@ import { RootState } from "@/store/store";
 import DragNdrop from "../DragNdrop";
 import Button from "../ui/Button";
 import PageLayout from "../ui/PageLayout";
+import ManageProjects from "./ManageProjects";
 import { motion } from "framer-motion";
 
 type Inputs = {
@@ -21,8 +22,11 @@ const fieldConfig = [
   { name: "title" as const, label: "Project Title", type: "input", required: true, placeholder: "e.g. Portfolio Website" },
   { name: "description" as const, label: "Description", type: "textarea", required: true, placeholder: "Brief description of the project..." },
   { name: "image" as const, label: "Image URL", type: "input", required: true, placeholder: "https://..." },
-  { name: "live" as const, label: "Live URL", type: "input", required: true, placeholder: "https://..." },
-  { name: "code" as const, label: "Code / GitHub URL", type: "input", required: true, placeholder: "https://github.com/..." },
+];
+
+const optionalFieldConfig = [
+  { name: "live" as const, label: "Live URL (optional)", type: "input", required: false, placeholder: "https://..." },
+  { name: "code" as const, label: "Code / GitHub URL (optional)", type: "input", required: false, placeholder: "https://github.com/..." },
 ];
 
 const Projects = () => {
@@ -39,6 +43,13 @@ const Projects = () => {
     });
   }, []);
 
+  /**
+   * FORM SUBMISSION LOGIC
+   * 1. Authorization: Verify admin access via Redux userId.
+   * 2. Data Preparation: 'live' and 'code' links are optional, defaulted to empty strings.
+   * 3. Sync: Real-time update to '/projects' node.
+   * 4. UI: Clear fields using reset() and show confirmation.
+   */
   const handleSubmission = async (data: Inputs) => {
     try {
       if (userId !== import.meta.env.VITE_APP_OWNER_ID) {
@@ -46,13 +57,17 @@ const Projects = () => {
       }
 
       const { title, description, live, code, image } = data;
-      const postData = { title, description, image, live, code };
+      const postData = { title, description, image, live: live || "", code: code || "" };
       const newPostKey = projectsLength + 1;
       const updates: Partial<Record<string, any>> = {};
       updates[`/projects/${newPostKey}`] = postData;
       updates["/projects/metadata/maxLength"] = newPostKey;
       await update(ref(db), updates);
       setSubmitStatus("success");
+      
+      // reset() is provided by react-hook-form to clear all input fields on success
+      reset();
+      
       setTimeout(() => setSubmitStatus("idle"), 3000);
     } catch (error) {
       console.error(error);
@@ -64,6 +79,7 @@ const Projects = () => {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<Inputs>();
 
@@ -108,20 +124,17 @@ const Projects = () => {
                   color: submitStatus === "success" ? "#22c55e" : "#ef4444",
                 }}
               >
-                {submitStatus === "success" ? "✓ Project added successfully!" : "✗ All fields are required."}
+                {submitStatus === "success" ? "✓ Project added successfully!" : "✗ Required fields missing."}
               </motion.div>
             )}
 
             <form
               onSubmit={handleSubmit((data) => {
-                if (errors.title || errors.description || errors.code || errors.live) {
-                  setSubmitStatus("error");
-                  return;
-                }
                 handleSubmission(data);
               })}
               className="space-y-4"
             >
+              {/* Required fields */}
               {fieldConfig.map((field) => (
                 <div key={field.name}>
                   <label className="clay-label">{field.label}</label>
@@ -145,6 +158,27 @@ const Projects = () => {
                       This field is required
                     </p>
                   )}
+                </div>
+              ))}
+
+              {/* Optional links divider */}
+              <div className="flex items-center gap-3 pt-2">
+                <span className="font-orbitron text-[9px] tracking-widest" style={{ color: "rgba(251,86,7,0.5)" }}>
+                  OPTIONAL LINKS
+                </span>
+                <div className="flex-1 h-px" style={{ background: "rgba(251,86,7,0.15)" }} />
+              </div>
+
+              {/* Optional fields (live + code) */}
+              {optionalFieldConfig.map((field) => (
+                <div key={field.name}>
+                  <label className="clay-label">{field.label}</label>
+                  <input
+                    type="text"
+                    placeholder={field.placeholder}
+                    className="clay-input"
+                    {...register(field.name)}
+                  />
                 </div>
               ))}
 
@@ -189,6 +223,9 @@ const Projects = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* ── Manage Section (below) ── */}
+      <ManageProjects />
     </PageLayout>
   );
 };

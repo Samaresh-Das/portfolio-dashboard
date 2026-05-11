@@ -10,6 +10,7 @@ import { GdriveUrlConverter } from "@/functions/GdriveUrlConverter";
 import DragNdrop from "../DragNdrop";
 import Button from "../ui/Button";
 import PageLayout from "../ui/PageLayout";
+import ManageSkills from "./ManageSkills";
 import { motion } from "framer-motion";
 
 type Inputs = {
@@ -31,6 +32,13 @@ const Skills = () => {
     });
   }, []);
 
+  /**
+   * FORM SUBMISSION LOGIC
+   * 1. Authorization: Checks Redux 'userId' against OWNER_ID in env.
+   * 2. Processing: Converts logo URL if it's a GDrive link.
+   * 3. Database Sync: Pushes to '/skills' and updates 'metadata/maxLength'.
+   * 4. UI Cleanup: Resets the form and shows success status.
+   */
   const handleSubmission = async (data: Inputs) => {
     try {
       if (userId !== import.meta.env.VITE_APP_OWNER_ID) {
@@ -53,6 +61,10 @@ const Skills = () => {
       updates["/skills/metadata/maxLength"] = newPostKey;
       await update(ref(db), updates);
       setSubmitStatus("success");
+      
+      // reset() is provided by react-hook-form to clear all input fields on success
+      reset(); 
+      
       setTimeout(() => setSubmitStatus("idle"), 3000);
     } catch (error) {
       console.error(error);
@@ -64,6 +76,7 @@ const Skills = () => {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<Inputs>();
 
@@ -204,6 +217,9 @@ const Skills = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* ── Manage Section (below) ── */}
+      <ManageSkills />
     </PageLayout>
   );
 };

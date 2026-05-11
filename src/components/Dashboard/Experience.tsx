@@ -8,6 +8,7 @@ import DragNdrop from "../DragNdrop";
 import { getDatabase, ref, update } from "firebase/database";
 import { app } from "@/firebase";
 import PageLayout from "../ui/PageLayout";
+import ManageExperience from "./ManageExperience";
 import { motion } from "framer-motion";
 
 type Inputs = {
@@ -37,9 +38,17 @@ const Experience = () => {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<Inputs>();
 
+  /**
+   * FORM SUBMISSION LOGIC
+   * 1. Authorization: Verify admin access via Redux userId.
+   * 2. Data Structure: Responsibilities are collected from 3 fields into an array.
+   * 3. Database Sync: Updates '/experience' and metadata.
+   * 4. UI: reset() clears the long form for the next entry.
+   */
   const handleSubmission = async (data: Inputs) => {
     console.log(data);
     try {
@@ -69,6 +78,10 @@ const Experience = () => {
       updates["/experience/metadata/maxLength"] = newExperienceKey;
       await update(ref(db), updates);
       setSubmitStatus("success");
+      
+      // reset() is provided by react-hook-form to clear all input fields on success
+      reset();
+      
       setTimeout(() => setSubmitStatus("idle"), 3000);
     } catch (err: any) {
       console.error(err);
@@ -262,6 +275,9 @@ const Experience = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* ── Manage Section (below) ── */}
+      <ManageExperience />
     </PageLayout>
   );
 };
