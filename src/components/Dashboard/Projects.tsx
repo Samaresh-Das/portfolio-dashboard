@@ -8,32 +8,41 @@ import DragNdrop from "../DragNdrop";
 import Button from "../ui/Button";
 import PageLayout from "../ui/PageLayout";
 import ManageProjects from "./ManageProjects";
+import RichTextEditor from "../ui/RichTextEditor";
+import TechStackInput from "../ui/TechStackInput";
+import MultiImageInput from "../ui/MultiImageInput";
 import { motion } from "framer-motion";
 
+/**
+ * FORM INPUTS TYPE
+ * - title, description: required text fields (registered with react-hook-form).
+ * - live, code, video: optional URL fields.
+ * - images, richDescription, techStack: managed via useState (not react-hook-form)
+ *   because they use custom components that don't integrate with register().
+ */
 type Inputs = {
   title: string;
   description: string;
-  image: string;
   live: string;
   code: string;
+  video: string;
 };
-
-const fieldConfig = [
-  { name: "title" as const, label: "Project Title", type: "input", required: true, placeholder: "e.g. Portfolio Website" },
-  { name: "description" as const, label: "Description", type: "textarea", required: true, placeholder: "Brief description of the project..." },
-  { name: "image" as const, label: "Image URL", type: "input", required: true, placeholder: "https://..." },
-];
-
-const optionalFieldConfig = [
-  { name: "live" as const, label: "Live URL (optional)", type: "input", required: false, placeholder: "https://..." },
-  { name: "code" as const, label: "Code / GitHub URL (optional)", type: "input", required: false, placeholder: "https://github.com/..." },
-];
 
 const Projects = () => {
   const db = getDatabase(app);
   const userId = useSelector((state: RootState) => state.auth.userId);
   const [projectsLength, setProjectsLength] = useState(0);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
+
+  /**
+   * STATE FOR CUSTOM COMPONENTS (not managed by react-hook-form)
+   * - images: Array of up to 4 image URLs. Starts with 1 empty slot.
+   * - richDescription: HTML string from the RichTextEditor.
+   * - techStack: Array of tech stack tag strings.
+   */
+  const [images, setImages] = useState<string[]>([""]);
+  const [richDescription, setRichDescription] = useState("");
+  const [techStack, setTechStack] = useState<string[]>([]);
 
   useEffect(() => {
     const metaRef = ref(db, "projects/metadata");
@@ -46,9 +55,13 @@ const Projects = () => {
   /**
    * FORM SUBMISSION LOGIC
    * 1. Authorization: Verify admin access via Redux userId.
-   * 2. Data Preparation: 'live' and 'code' links are optional, defaulted to empty strings.
+   * 2. Data Preparation: Collects react-hook-form data + custom state.
+   *    - images[0] is used as the primary 'image' field for backward compatibility.
+   *    - All image URLs stored as 'images' array.
+   *    - richDescription stored separately from short 'description'.
+   *    - techStack stored as string array.
    * 3. Sync: Real-time update to '/projects' node.
-   * 4. UI: Clear fields using reset() and show confirmation.
+   * 4. UI: Clear all fields and show confirmation.
    */
   const handleSubmission = async (data: Inputs) => {
     try {
@@ -56,18 +69,34 @@ const Projects = () => {
         throw new Error("Not Authorized, You need administrator access");
       }
 
-      const { title, description, live, code, image } = data;
-      const postData = { title, description, image, live: live || "", code: code || "" };
+      const { title, description, live, code, video } = data;
+
+      // Build the project data object
+      const postData = {
+        title,
+        description,
+        image: images[0] || "",              // Primary image for backward compat
+        images: images.filter(Boolean),       // All non-empty image URLs
+        richDescription: richDescription,     // HTML content from RTE
+        techStack: techStack,                 // Array of tech tags
+        video: video || "",                   // Optional video link
+        live: live || "",
+        code: code || "",
+      };
+
       const newPostKey = projectsLength + 1;
       const updates: Partial<Record<string, any>> = {};
       updates[`/projects/${newPostKey}`] = postData;
       updates["/projects/metadata/maxLength"] = newPostKey;
       await update(ref(db), updates);
       setSubmitStatus("success");
-      
-      // reset() is provided by react-hook-form to clear all input fields on success
+
+      // Reset all fields — react-hook-form fields + custom state
       reset();
-      
+      setImages([""]);
+      setRichDescription("");
+      setTechStack([]);
+
       setTimeout(() => setSubmitStatus("idle"), 3000);
     } catch (error) {
       console.error(error);
@@ -130,38 +159,108 @@ const Projects = () => {
 
             <form
               onSubmit={handleSubmit((data) => {
+                // Validate that at least the primary image is provided
+                if (!images[0]?.trim()) {
+                  setSubmitStatus("error");
+                  setTimeout(() => setSubmitStatus("idle"), 3000);
+                  return;
+                }
                 handleSubmission(data);
               })}
               className="space-y-4"
             >
-              {/* Required fields */}
-              {fieldConfig.map((field) => (
-                <div key={field.name}>
-                  <label className="clay-label">{field.label}</label>
-                  {field.type === "textarea" ? (
-                    <textarea
-                      rows={4}
-                      placeholder={field.placeholder}
-                      className="clay-input resize-none"
-                      {...register(field.name, { required: field.required })}
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      placeholder={field.placeholder}
-                      className="clay-input"
-                      {...register(field.name, { required: field.required })}
-                    />
-                  )}
-                  {errors[field.name] && (
-                    <p className="mt-1 font-grotesk text-xs" style={{ color: "#ef4444" }}>
-                      This field is required
-                    </p>
-                  )}
-                </div>
-              ))}
+              {/* ── Project Title ── */}
+              <div>
+                <label className="clay-label">Project Title</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Portfolio Website"
+                  className="clay-input"
+                  {...register("title", { required: true })}
+                />
+                {errors.title && (
+                  <p className="mt-1 font-grotesk text-xs" style={{ color: "#ef4444" }}>
+                    This field is required
+                  </p>
+                )}
+              </div>
 
-              {/* Optional links divider */}
+              {/* ── Short Description ── */}
+              <div>
+                <label className="clay-label">Short Description</label>
+                <textarea
+                  rows={3}
+                  placeholder="Brief one-liner about the project..."
+                  className="clay-input resize-none"
+                  {...register("description", { required: true })}
+                />
+                {errors.description && (
+                  <p className="mt-1 font-grotesk text-xs" style={{ color: "#ef4444" }}>
+                    This field is required
+                  </p>
+                )}
+              </div>
+
+              {/* ── Rich Text Editor for detailed description ── */}
+              <div>
+                <label className="clay-label">Detailed Description (Rich Text)</label>
+                <RichTextEditor
+                  value={richDescription}
+                  onChange={setRichDescription}
+                  placeholder="Write a detailed project description with formatting..."
+                />
+                <p className="mt-1.5 font-grotesk text-xs" style={{ color: "rgba(240,227,164,0.3)" }}>
+                  Supports bold, italic, underline, lists, and headings
+                </p>
+              </div>
+
+              {/* ── Image URLs divider ── */}
+              <div className="flex items-center gap-3 pt-2">
+                <span className="font-orbitron text-[9px] tracking-widest" style={{ color: "rgba(251,86,7,0.5)" }}>
+                  MEDIA
+                </span>
+                <div className="flex-1 h-px" style={{ background: "rgba(251,86,7,0.15)" }} />
+              </div>
+
+              {/* ── Multi Image URLs ── */}
+              <div>
+                <label className="clay-label">Image URLs (up to 4)</label>
+                <MultiImageInput images={images} onChange={setImages} />
+              </div>
+
+              {/* ── Video Link ── */}
+              <div>
+                <label className="clay-label">Video Link (optional)</label>
+                <input
+                  type="text"
+                  placeholder="https://youtube.com/... or direct video URL"
+                  className="clay-input"
+                  {...register("video")}
+                />
+                <p className="mt-1.5 font-grotesk text-xs" style={{ color: "rgba(240,227,164,0.3)" }}>
+                  YouTube, Vimeo, or direct video URL for project demo
+                </p>
+              </div>
+
+              {/* ── Tech Stack divider ── */}
+              <div className="flex items-center gap-3 pt-2">
+                <span className="font-orbitron text-[9px] tracking-widest" style={{ color: "rgba(251,86,7,0.5)" }}>
+                  TECH STACK
+                </span>
+                <div className="flex-1 h-px" style={{ background: "rgba(251,86,7,0.15)" }} />
+              </div>
+
+              {/* ── Tech Stack Pills ── */}
+              <div>
+                <label className="clay-label">Technologies Used</label>
+                <TechStackInput
+                  value={techStack}
+                  onChange={setTechStack}
+                  placeholder="Type a tech and press Enter..."
+                />
+              </div>
+
+              {/* ── Optional Links divider ── */}
               <div className="flex items-center gap-3 pt-2">
                 <span className="font-orbitron text-[9px] tracking-widest" style={{ color: "rgba(251,86,7,0.5)" }}>
                   OPTIONAL LINKS
@@ -169,18 +268,27 @@ const Projects = () => {
                 <div className="flex-1 h-px" style={{ background: "rgba(251,86,7,0.15)" }} />
               </div>
 
-              {/* Optional fields (live + code) */}
-              {optionalFieldConfig.map((field) => (
-                <div key={field.name}>
-                  <label className="clay-label">{field.label}</label>
-                  <input
-                    type="text"
-                    placeholder={field.placeholder}
-                    className="clay-input"
-                    {...register(field.name)}
-                  />
-                </div>
-              ))}
+              {/* ── Live URL ── */}
+              <div>
+                <label className="clay-label">Live URL (optional)</label>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  className="clay-input"
+                  {...register("live")}
+                />
+              </div>
+
+              {/* ── GitHub URL ── */}
+              <div>
+                <label className="clay-label">Code / GitHub URL (optional)</label>
+                <input
+                  type="text"
+                  placeholder="https://github.com/..."
+                  className="clay-input"
+                  {...register("code")}
+                />
+              </div>
 
               <div className="pt-2">
                 <Button type="submit" className="w-full">

@@ -6,14 +6,26 @@ import { RootState } from "@/store/store";
 import useData from "@/hooks/useData";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
+import RichTextEditor from "../ui/RichTextEditor";
+import TechStackInput from "../ui/TechStackInput";
+import MultiImageInput from "../ui/MultiImageInput";
 import { truncateDescription } from "@/functions/truncate";
 import { motion, AnimatePresence } from "framer-motion";
 
+/**
+ * PROJECT DATA SHAPE
+ * Includes all new fields: images array, richDescription, techStack, video.
+ * Fields like 'image' remain for backward compatibility with existing data.
+ */
 interface ProjectItem {
   id?: number;
   title: string;
   description: string;
   image: string;
+  images?: string[];
+  richDescription?: string;
+  techStack?: string[];
+  video?: string;
   live?: string;
   code?: string;
 }
@@ -27,14 +39,24 @@ const ManageProjects = () => {
   const [editKey, setEditKey] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Standard fields
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editImage, setEditImage] = useState("");
   const [editLive, setEditLive] = useState("");
   const [editCode, setEditCode] = useState("");
 
+  // New rich content fields
+  const [editImages, setEditImages] = useState<string[]>([""]);
+  const [editRichDescription, setEditRichDescription] = useState("");
+  const [editTechStack, setEditTechStack] = useState<string[]>([]);
+  const [editVideo, setEditVideo] = useState("");
+
   const [actionStatus, setActionStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
+
+  // Confirmation state
+  const [itemToDelete, setItemToDelete] = useState<{ key: string; title: string } | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   // Parse items from data
   const itemEntries: [string, ProjectItem][] = data
@@ -48,25 +70,36 @@ const ManageProjects = () => {
     setTimeout(() => setActionStatus(null), 3000);
   };
 
+  /**
+   * OPEN EDIT MODAL
+   * Pre-fills all fields from the existing project data.
+   * For backward compatibility, if 'images' array doesn't exist,
+   * falls back to a single-element array from the 'image' field.
+   */
   const openEditModal = (key: string, item: ProjectItem) => {
     setEditItem(item);
     setEditKey(key);
     setEditTitle(item.title || "");
     setEditDescription(item.description || "");
-    setEditImage(item.image || "");
     setEditLive(item.live || "");
     setEditCode(item.code || "");
+
+    // New fields — fallback to empty/default if not present in older data
+    setEditImages(item.images?.length ? [...item.images] : [item.image || ""]);
+    setEditRichDescription(item.richDescription || "");
+    setEditTechStack(item.techStack ? [...item.techStack] : []);
+    setEditVideo(item.video || "");
+
     setIsModalOpen(true);
   };
 
   /**
    * HANDLE UPDATE LOGIC
-   * 1. Merges state variables back into a single project object.
-   * 2. Live and Code links are handled as optional (empty string allowed).
-   * 3. Uses atomic updates to target only the specific project key.
+   * Merges all fields (old + new) into the project object.
+   * 'image' field is kept as images[0] for backward compatibility.
    */
   const handleUpdate = async () => {
-    if (!editItem || !editTitle.trim() || !editDescription.trim() || !editImage.trim()) return;
+    if (!editItem || !editTitle.trim() || !editDescription.trim()) return;
     try {
       if (userId !== import.meta.env.VITE_APP_OWNER_ID) {
         throw new Error("Not Authorized");
@@ -76,7 +109,11 @@ const ManageProjects = () => {
         ...editItem,
         title: editTitle,
         description: editDescription,
-        image: editImage,
+        image: editImages[0] || "",
+        images: editImages.filter(Boolean),
+        richDescription: editRichDescription,
+        techStack: editTechStack,
+        video: editVideo || "",
         live: editLive || "",
         code: editCode || "",
       };
@@ -95,22 +132,29 @@ const ManageProjects = () => {
   };
 
   /**
+   * TRIGGER DELETE CONFIRMATION
+   */
+  const confirmDelete = (key: string, title: string) => {
+    setItemToDelete({ key, title });
+    setIsConfirmOpen(true);
+  };
+
+  /**
    * HANDLE DELETE & RE-INDEX LOGIC
    * Deletes the item, then reconstructs the collection starting from index 1.
-   * This ensures the frontend portfolio site doesn't encounter null pointers 
-   * when iterating through a numbered list of projects.
    */
-  const handleDelete = async (key: string) => {
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
     try {
       if (userId !== import.meta.env.VITE_APP_OWNER_ID) {
         throw new Error("Not Authorized");
       }
 
-      setDeletingKey(key);
+      setDeletingKey(itemToDelete.key);
+      setIsConfirmOpen(false);
 
-      await remove(ref(db, `/projects/${key}`));
+      await remove(ref(db, `/projects/${itemToDelete.key}`));
 
-      // Re-fetch and re-index to keep IDs sequential
       const snapshot = await get(ref(db, "/projects"));
       const currentData = snapshot.val();
       const metadata = currentData?.metadata;
@@ -132,10 +176,12 @@ const ManageProjects = () => {
       await set(ref(db, "/projects"), rebuilt);
 
       setDeletingKey(null);
+      setItemToDelete(null);
       showStatus("success", "Project deleted successfully!");
     } catch (error) {
       console.error(error);
       setDeletingKey(null);
+      setItemToDelete(null);
       showStatus("error", "Failed to delete project.");
     }
   };
@@ -210,57 +256,85 @@ const ManageProjects = () => {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20, height: 0, marginBottom: 0 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
-                  className="manage-item flex items-center gap-4 p-4 rounded-xl"
+                  className="manage-item p-4 rounded-xl"
                   style={{
                     background: "linear-gradient(135deg, rgba(251,86,7,0.07) 0%, rgba(255,159,28,0.03) 100%)",
                     border: "1px solid rgba(251,86,7,0.18)",
                   }}
                 >
-                  {/* Thumbnail */}
-                  <div
-                    className="shrink-0 w-14 h-14 rounded-xl overflow-hidden"
-                    style={{ border: "1px solid rgba(251,86,7,0.2)" }}
-                  >
-                    <img
-                      className="w-full h-full object-cover"
-                      src={item.image}
-                      alt={item.title}
-                    />
-                  </div>
-
-                  {/* Text */}
-                  <div className="flex-1 min-w-0">
-                    <h5 className="font-orbitron font-bold text-sm truncate" style={{ color: "#fb5607" }}>
-                      {item.title}
-                    </h5>
-                    <p className="font-grotesk text-xs leading-relaxed" style={{ color: "rgba(240,227,164,0.5)" }}>
-                      {truncateDescription(item.description, 60)}
-                    </p>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <motion.button
-                      whileHover={{ scale: 1.08 }}
-                      whileTap={{ scale: 0.92 }}
-                      onClick={() => openEditModal(key, item)}
-                      className="manage-btn manage-btn-edit"
-                      title="Edit"
+                  <div className="flex items-center gap-4">
+                    {/* Thumbnail */}
+                    <div
+                      className="shrink-0 w-14 h-14 rounded-xl overflow-hidden"
+                      style={{ border: "1px solid rgba(251,86,7,0.2)" }}
                     >
-                      <span className="font-orbitron text-[9px] tracking-wider">UPDATE</span>
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.08 }}
-                      whileTap={{ scale: 0.92 }}
-                      onClick={() => handleDelete(key)}
-                      disabled={deletingKey === key}
-                      className="manage-btn manage-btn-delete"
-                      title="Delete"
-                    >
-                      <span className="font-orbitron text-[9px] tracking-wider">
-                        {deletingKey === key ? "..." : "DELETE"}
-                      </span>
-                    </motion.button>
+                      <img
+                        className="w-full h-full object-cover"
+                        src={item.image}
+                        alt={item.title}
+                      />
+                    </div>
+
+                    {/* Text */}
+                    <div className="flex-1 min-w-0">
+                      <h5 className="font-orbitron font-bold text-sm truncate" style={{ color: "#fb5607" }}>
+                        {item.title}
+                      </h5>
+                      <p className="font-grotesk text-xs leading-relaxed" style={{ color: "rgba(240,227,164,0.5)" }}>
+                        {truncateDescription(item.description, 60)}
+                      </p>
+                      {/* Tech stack pills preview */}
+                      {item.techStack && item.techStack.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {item.techStack.slice(0, 4).map((tech, i) => (
+                            <span
+                              key={i}
+                              className="font-grotesk text-[10px] px-1.5 py-0.5 rounded"
+                              style={{
+                                background: "rgba(251,86,7,0.1)",
+                                color: "rgba(251,86,7,0.7)",
+                                border: "1px solid rgba(251,86,7,0.15)",
+                              }}
+                            >
+                              {tech}
+                            </span>
+                          ))}
+                          {item.techStack.length > 4 && (
+                            <span
+                              className="font-grotesk text-[10px] px-1.5 py-0.5 rounded"
+                              style={{ color: "rgba(240,227,164,0.4)" }}
+                            >
+                              +{item.techStack.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <motion.button
+                        whileHover={{ scale: 1.08 }}
+                        whileTap={{ scale: 0.92 }}
+                        onClick={() => openEditModal(key, item)}
+                        className="manage-btn manage-btn-edit"
+                        title="Edit"
+                      >
+                        <span className="font-orbitron text-[9px] tracking-wider">UPDATE</span>
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.08 }}
+                        whileTap={{ scale: 0.92 }}
+                        onClick={() => confirmDelete(key, item.title)}
+                        disabled={deletingKey === key}
+                        className="manage-btn manage-btn-delete"
+                        title="Delete"
+                      >
+                        <span className="font-orbitron text-[9px] tracking-wider">
+                          {deletingKey === key ? "..." : "DELETE"}
+                        </span>
+                      </motion.button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -269,9 +343,10 @@ const ManageProjects = () => {
         )}
       </div>
 
-      {/* Edit Modal */}
+      {/* ═══ Edit Modal ═══ */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="UPDATE PROJECT">
         <div className="space-y-4">
+          {/* Title */}
           <div>
             <label className="clay-label">Project Title</label>
             <input
@@ -282,28 +357,74 @@ const ManageProjects = () => {
               placeholder="e.g. Portfolio Website"
             />
           </div>
+
+          {/* Short Description */}
           <div>
-            <label className="clay-label">Description</label>
+            <label className="clay-label">Short Description</label>
             <textarea
-              rows={4}
+              rows={3}
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               className="clay-input resize-none"
-              placeholder="Brief description of the project..."
-            />
-          </div>
-          <div>
-            <label className="clay-label">Image URL</label>
-            <input
-              type="text"
-              value={editImage}
-              onChange={(e) => setEditImage(e.target.value)}
-              className="clay-input"
-              placeholder="https://..."
+              placeholder="Brief one-liner about the project..."
             />
           </div>
 
-          {/* Optional links divider */}
+          {/* Rich Text Editor */}
+          <div>
+            <label className="clay-label">Detailed Description (Rich Text)</label>
+            <RichTextEditor
+              value={editRichDescription}
+              onChange={setEditRichDescription}
+              placeholder="Write a detailed project description..."
+            />
+          </div>
+
+          {/* Media divider */}
+          <div className="flex items-center gap-3 pt-1">
+            <span className="font-orbitron text-[9px] tracking-widest" style={{ color: "rgba(251,86,7,0.5)" }}>
+              MEDIA
+            </span>
+            <div className="flex-1 h-px" style={{ background: "rgba(251,86,7,0.15)" }} />
+          </div>
+
+          {/* Multi Image URLs */}
+          <div>
+            <label className="clay-label">Image URLs (up to 4)</label>
+            <MultiImageInput images={editImages} onChange={setEditImages} />
+          </div>
+
+          {/* Video Link */}
+          <div>
+            <label className="clay-label">Video Link (optional)</label>
+            <input
+              type="text"
+              value={editVideo}
+              onChange={(e) => setEditVideo(e.target.value)}
+              className="clay-input"
+              placeholder="https://youtube.com/... or direct video URL"
+            />
+          </div>
+
+          {/* Tech Stack divider */}
+          <div className="flex items-center gap-3 pt-1">
+            <span className="font-orbitron text-[9px] tracking-widest" style={{ color: "rgba(251,86,7,0.5)" }}>
+              TECH STACK
+            </span>
+            <div className="flex-1 h-px" style={{ background: "rgba(251,86,7,0.15)" }} />
+          </div>
+
+          {/* Tech Stack Pills */}
+          <div>
+            <label className="clay-label">Technologies Used</label>
+            <TechStackInput
+              value={editTechStack}
+              onChange={setEditTechStack}
+              placeholder="Type a tech and press Enter..."
+            />
+          </div>
+
+          {/* Links divider */}
           <div className="flex items-center gap-3 pt-1">
             <span className="font-orbitron text-[9px] tracking-widest" style={{ color: "rgba(251,86,7,0.5)" }}>
               OPTIONAL LINKS
@@ -346,6 +467,51 @@ const ManageProjects = () => {
             >
               <span className="font-orbitron text-xs tracking-wider">SAVE CHANGES</span>
             </Button>
+          </div>
+        </div>
+      </Modal>
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} title="CONFIRM DELETION">
+        <div className="space-y-6 text-center py-2">
+          <div className="flex flex-col items-center gap-4">
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center text-2xl"
+              style={{
+                background: "rgba(239,68,68,0.1)",
+                border: "1px solid rgba(239,68,68,0.3)",
+                color: "#ef4444"
+              }}
+            >
+              ⚠
+            </div>
+            <div>
+              <h3 className="font-orbitron font-bold text-sm text-gradient-error mb-2 uppercase tracking-wider">Delete project?</h3>
+              <p className="font-grotesk text-xs leading-relaxed" style={{ color: "rgba(240,227,164,0.6)" }}>
+                You are about to delete <span style={{ color: "#fb5607", fontWeight: 600 }}>"{itemToDelete?.title}"</span>. 
+                This will permanently remove the project and all its associated rich content from your portfolio.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setIsConfirmOpen(false)}
+              className="flex-1 btn-clay btn-ghost flex items-center justify-center"
+            >
+              <span className="font-orbitron text-xs tracking-wider">CANCEL</span>
+            </button>
+            <button
+              onClick={handleDelete}
+              className="flex-1 rounded-xl flex items-center justify-center transition-all duration-200"
+              style={{
+                background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "white",
+                boxShadow: "0 4px 20px rgba(239,68,68,0.4)"
+              }}
+            >
+              <span className="font-orbitron text-xs tracking-wider">CONFIRM DELETE</span>
+            </button>
           </div>
         </div>
       </Modal>
