@@ -40,7 +40,8 @@ const RichTextEditor = ({ value, onChange, placeholder = "Write a detailed descr
    * We only set innerHTML from the `value` prop ONCE — on mount or when
    * the value changes externally (e.g., opening an edit modal with existing data).
    */
-  const lastExternalValue = useRef<string>(value);
+  const lastExternalValue = useRef<string>("");
+  const isFirstRender = useRef(true);
 
   /**
    * EFFECT: Sync external value changes into the editor.
@@ -50,9 +51,15 @@ const RichTextEditor = ({ value, onChange, placeholder = "Write a detailed descr
    * We compare against `lastExternalValue` to avoid overwriting user typing.
    */
   useEffect(() => {
-    if (editorRef.current && value !== lastExternalValue.current) {
-      editorRef.current.innerHTML = value;
-      lastExternalValue.current = value;
+    if (editorRef.current) {
+      if (isFirstRender.current) {
+        editorRef.current.innerHTML = value;
+        lastExternalValue.current = value;
+        isFirstRender.current = false;
+      } else if (value !== lastExternalValue.current) {
+        editorRef.current.innerHTML = value;
+        lastExternalValue.current = value;
+      }
     }
   }, [value]);
 
@@ -107,13 +114,72 @@ const RichTextEditor = ({ value, onChange, placeholder = "Write a detailed descr
   }, [onChange]);
 
   /**
-   * On paste, strip all HTML formatting and paste as plain text.
-   * This prevents pasting from Word/web bringing in messy HTML.
+   * On paste, process HTML to support clean pasting from Google Docs/Word,
+   * while stripping dirty inline styles and unwanted tags.
    */
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
+    const html = e.clipboardData.getData("text/html");
     const text = e.clipboardData.getData("text/plain");
-    document.execCommand("insertText", false, text);
+
+    if (html) {
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = html;
+
+      // 1. Convert style-based formatting to tags (especially for Google Docs)
+      const spans = tempDiv.querySelectorAll("span");
+      spans.forEach(span => {
+        const style = span.getAttribute("style") || "";
+        const s = style.replace(/\s+/g, '').toLowerCase();
+        let newContent = span.innerHTML;
+        
+        if (s.includes("font-weight:700") || s.includes("font-weight:bold") || s.includes("font-weight:800") || s.includes("font-weight:900")) {
+          newContent = `<b>${newContent}</b>`;
+        }
+        if (s.includes("font-style:italic")) {
+          newContent = `<i>${newContent}</i>`;
+        }
+        if (s.includes("text-decoration:underline")) {
+          newContent = `<u>${newContent}</u>`;
+        }
+        if (s.includes("text-decoration:line-through")) {
+          newContent = `<s>${newContent}</s>`;
+        }
+        span.innerHTML = newContent;
+      });
+
+      // 2. Strip all attributes and unwanted tags to make it clean
+      const elements = tempDiv.querySelectorAll("*");
+      const allowedTags = [
+        "b", "i", "u", "s", "strike", "strong", "em", "p", "div", 
+        "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "a", "br", "blockquote"
+      ];
+      
+      elements.forEach((el) => {
+        const tag = el.tagName.toLowerCase();
+        if (!allowedTags.includes(tag)) {
+          // Unwrap tag
+          const parent = el.parentNode;
+          if (parent) {
+            while (el.firstChild) {
+              parent.insertBefore(el.firstChild, el);
+            }
+            parent.removeChild(el);
+          }
+        } else {
+          // Keep tag but remove all attributes except href for links
+          const attrs = Array.from(el.attributes);
+          attrs.forEach(attr => {
+            if (tag === 'a' && attr.name === 'href') return;
+            el.removeAttribute(attr.name);
+          });
+        }
+      });
+
+      document.execCommand("insertHTML", false, tempDiv.innerHTML);
+    } else if (text) {
+      document.execCommand("insertText", false, text);
+    }
   }, []);
 
   return (
