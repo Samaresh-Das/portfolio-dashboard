@@ -28,6 +28,7 @@ interface ProjectItem {
   video?: string;
   live?: string;
   code?: string;
+  isArchived?: boolean;
 }
 
 const ManageProjects = () => {
@@ -128,6 +129,24 @@ const ManageProjects = () => {
     } catch (error) {
       console.error(error);
       showStatus("error", "Failed to update project.");
+    }
+  };
+
+  /**
+   * TOGGLE ARCHIVE STATUS
+   */
+  const handleToggleArchive = async (key: string, item: ProjectItem) => {
+    try {
+      if (userId !== import.meta.env.VITE_APP_OWNER_ID) {
+        throw new Error("Not Authorized");
+      }
+      const updates: Record<string, any> = {};
+      updates[`/projects/${key}/isArchived`] = !item.isArchived;
+      await update(ref(db), updates);
+      showStatus("success", `Project ${!item.isArchived ? 'archived' : 'unarchived'} successfully!`);
+    } catch (error) {
+      console.error(error);
+      showStatus("error", "Failed to update project status.");
     }
   };
 
@@ -277,9 +296,23 @@ const ManageProjects = () => {
 
                     {/* Text */}
                     <div className="flex-1 min-w-0">
-                      <h5 className="font-orbitron font-bold text-sm truncate" style={{ color: "#fb5607" }}>
-                        {item.title}
-                      </h5>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h5 className="font-orbitron font-bold text-sm truncate" style={{ color: "#fb5607" }}>
+                          {item.title}
+                        </h5>
+                        {item.isArchived && (
+                          <span
+                            className="font-orbitron text-[8px] tracking-widest px-2 py-0.5 rounded shrink-0"
+                            style={{
+                              background: "rgba(239,68,68,0.1)",
+                              color: "rgba(239,68,68,0.8)",
+                              border: "1px solid rgba(239,68,68,0.2)",
+                            }}
+                          >
+                            ARCHIVED
+                          </span>
+                        )}
+                      </div>
                       <p className="font-grotesk text-xs leading-relaxed" style={{ color: "rgba(240,227,164,0.5)" }}>
                         {truncateDescription(item.description, 60)}
                       </p>
@@ -313,6 +346,26 @@ const ManageProjects = () => {
 
                     {/* Action buttons */}
                     <div className="flex items-center gap-2 shrink-0">
+                      <motion.button
+                        whileHover={{ scale: 1.08 }}
+                        whileTap={{ scale: 0.92 }}
+                        onClick={() => handleToggleArchive(key, item)}
+                        className="manage-btn"
+                        style={{
+                          background: item.isArchived ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+                          border: item.isArchived ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(239,68,68,0.3)",
+                          color: item.isArchived ? "#10b981" : "#ef4444",
+                          padding: "6px 10px",
+                          borderRadius: "8px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer"
+                        }}
+                        title={item.isArchived ? "Unarchive" : "Archive"}
+                      >
+                        <span className="font-orbitron text-[9px] tracking-wider">{item.isArchived ? "UNARCHIVE" : "ARCHIVE"}</span>
+                      </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.08 }}
                         whileTap={{ scale: 0.92 }}
